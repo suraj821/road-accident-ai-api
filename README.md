@@ -3,7 +3,10 @@ pip install fastapi uvicorn transformers torch torchvision pillow sentencepiece 
 python -m spacy download en_core_web_sm
 
 Step 2: Directory Structure
+
+
 ![alt text](image-1.png)
+
 
 Step 3: Add the codes.
 
