@@ -1,26 +1,72 @@
 import torch
-from .models import resnet_model, preprocess_image, tokenizer_bert, bert_model, t5_model, t5_tokenizer, qa_pipeline
+from torchvision import models, transforms
+from PIL import Image
+import os
 
-# Image classification
-def predict_accident_image(img_path):
-    img_tensor = preprocess_image(img_path)
-    outputs = resnet_model(img_tensor)
-    _, pred = torch.max(outputs, 1)
-    return "Accident" if pred.item() == 1 else "No Accident"
+# ----------------------------
+# 1. Model Setup
+# ----------------------------
+# Same transform used during training
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
 
-# Text severity
-def predict_severity(text):
-    inputs = tokenizer_bert(text, return_tensors="pt", truncation=True, padding=True)
-    outputs = bert_model(**inputs)
-    pred = torch.argmax(outputs.logits, dim=1).item()
-    return ["Low", "Medium", "High"][pred]
+# Classes should match your dataset folder names
+class_names = ['Accident', 'No_Accident']
 
-# Summarization
-def generate_summary(text):
-    inputs = t5_tokenizer.encode("summarize: " + text, return_tensors="pt", max_length=512, truncation=True)
-    summary_ids = t5_model.generate(inputs, max_length=150, min_length=40, length_penalty=2.0, num_beams=4)
-    return t5_tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+# Load ResNet50 model structure
+model = models.resnet50(pretrained=False)
+num_ftrs = model.fc.in_features
+model.fc = torch.nn.Linear(num_ftrs, 2)
 
-# Question Answering
-def answer_question(question, context):
-    return qa_pipeline(question=question, context=context)['answer']
+# Load fine-tuned weights
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "resnet50_accident.pt")
+model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
+model.eval()
+
+# ----------------------------
+# 2. Prediction Function
+# ----------------------------
+def predict_accident_image(image_path: str) -> str:
+    """Predict whether the image shows an Accident or No_Accident."""
+    try:
+        image = Image.open(image_path).convert('RGB')
+        img_tensor = transform(image).unsqueeze(0)
+
+        with torch.no_grad():
+            outputs = model(img_tensor)
+            _, preds = torch.max(outputs, 1)
+
+        predicted_class = class_names[preds.item()]
+        return predicted_class
+    except Exception as e:
+        return f"Error processing image: {e}"
+
+
+# ----------------------------
+# 3. Dummy Stubs (keep your existing ones)
+# ----------------------------
+def predict_severity(report: str) -> str:
+    # Example rule-based or model-based logic
+    if "major" in report.lower() or "serious" in report.lower():
+        return "High"
+    elif "minor" in report.lower():
+        return "Low"
+    else:
+        return "Medium"
+
+
+def generate_summary(report: str) -> str:
+    # Simple text summarization stub
+    return " ".join(report.split()[:15]) + "..."
+
+
+def answer_question(question: str, context: str) -> str:
+    # Simple QA stub for demo
+    if "where" in question.lower():
+        for word in context.split():
+            if word.istitle():
+                return word
+        return "Location not found."
+    return "Answer not available."
