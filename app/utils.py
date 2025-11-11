@@ -1,72 +1,63 @@
 import torch
 from torchvision import models, transforms
 from PIL import Image
+import whisper
 import os
 
 # ----------------------------
-# 1. Model Setup
+# Computer Vision Model (unchanged)
 # ----------------------------
-# Same transform used during training
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
-
-# Classes should match your dataset folder names
 class_names = ['Accident', 'No_Accident']
-
-# Load ResNet50 model structure
 model = models.resnet50(pretrained=False)
 num_ftrs = model.fc.in_features
 model.fc = torch.nn.Linear(num_ftrs, 2)
-
-# Load fine-tuned weights
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "resnet50_accident.pt")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models/resnet50_accident.pt")
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
 model.eval()
 
-# ----------------------------
-# 2. Prediction Function
-# ----------------------------
 def predict_accident_image(image_path: str) -> str:
-    """Predict whether the image shows an Accident or No_Accident."""
-    try:
-        image = Image.open(image_path).convert('RGB')
-        img_tensor = transform(image).unsqueeze(0)
-
-        with torch.no_grad():
-            outputs = model(img_tensor)
-            _, preds = torch.max(outputs, 1)
-
-        predicted_class = class_names[preds.item()]
-        return predicted_class
-    except Exception as e:
-        return f"Error processing image: {e}"
-
+    image = Image.open(image_path).convert('RGB')
+    img_tensor = transform(image).unsqueeze(0)
+    with torch.no_grad():
+        outputs = model(img_tensor)
+        _, preds = torch.max(outputs, 1)
+    return class_names[preds.item()]
 
 # ----------------------------
-# 3. Dummy Stubs (keep your existing ones)
+# NLP stubs
 # ----------------------------
-def predict_severity(report: str) -> str:
-    # Example rule-based or model-based logic
-    if "major" in report.lower() or "serious" in report.lower():
+def predict_severity(text: str) -> str:
+    if "major" in text.lower() or "serious" in text.lower():
         return "High"
-    elif "minor" in report.lower():
+    elif "minor" in text.lower():
         return "Low"
     else:
         return "Medium"
 
-
-def generate_summary(report: str) -> str:
-    # Simple text summarization stub
-    return " ".join(report.split()[:15]) + "..."
-
+def generate_summary(text: str) -> str:
+    return " ".join(text.split()[:15]) + "..."
 
 def answer_question(question: str, context: str) -> str:
-    # Simple QA stub for demo
     if "where" in question.lower():
         for word in context.split():
             if word.istitle():
                 return word
         return "Location not found."
     return "Answer not available."
+
+# ----------------------------
+# Speech Recognition
+# ----------------------------
+# Load Whisper model once
+whisper_model = whisper.load_model("base")  # or "small", "medium", "large"
+
+def speech_to_text(audio_file_path: str) -> str:
+    """
+    Convert audio file (.wav, .mp3) to text using Whisper.
+    """
+    result = whisper_model.transcribe(audio_file_path)
+    return result['text']

@@ -3,6 +3,8 @@ from torchvision import models, transforms, datasets
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
+from pathlib import Path 
+
 
 # Data transforms
 transform = transforms.Compose([
