@@ -45,9 +45,9 @@ async def qa(report: str = File(...), question: str = File(...)):
 # ---------------- Speech Recognition Endpoint ----------------
 @app.post("/predict_severity_speech")
 async def predict_severity_from_speech(file: UploadFile = File(...)):
-    dir = Path("D:\\Suraj\\MTECH Learning\\Semester 2\\API Driven\\Assignments\\Assignment2\\road-accident-ai-api")
+    # dir = Path("D:\\Suraj\\MTECH Learning\\Semester 2\\API Driven\\Assignments\\Assignment2\\road-accident-ai-api")
     audio_path = f"temp_audio_{file.filename}"
-    with open(dir/audio_path, "wb") as f:
+    with open(audio_path, "wb") as f:
         f.write(await file.read())
     
     # Convert speech to text

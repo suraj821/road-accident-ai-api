@@ -4,6 +4,11 @@ from PIL import Image
 import whisper
 import os
 
+
+ffmpeg_path = "/usr/local/bin/ffmpeg"  
+os.environ['PATH'] += f':{os.path.dirname(ffmpeg_path)}'
+
+
 # ----------------------------
 # Computer Vision Model (unchanged)
 # ----------------------------
@@ -53,7 +58,7 @@ def answer_question(question: str, context: str) -> str:
 # Speech Recognition
 # ----------------------------
 # Load Whisper model once
-whisper_model = whisper.load_model("base")  # or "small", "medium", "large"
+whisper_model = whisper.load_model("large")  # or "small", "medium", "large"
 
 def speech_to_text(audio_file_path: str) -> str:
     """
