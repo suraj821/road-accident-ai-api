@@ -1,17 +1,32 @@
 from fastapi import FastAPI, File, UploadFile
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import ProcessCollector, REGISTRY
 from .utils import (
-    predict_accident_image, 
-    predict_severity, 
-    generate_summary, 
+    predict_accident_image,
+    predict_severity,
+    generate_summary,
     answer_question,
     speech_to_text
 )
-import shutil
 import os
-from pathlib import Path
 
 app = FastAPI(title="Road Accident AI System")
 
+# ---------------- Prometheus Integration ----------------
+# Register process-level metrics (CPU & Memory) in the Prometheus registry
+REGISTRY.register(ProcessCollector(namespace="fastapi"))
+
+# Initialize instrumentator for FastAPI metrics
+instrumentator = Instrumentator(
+    should_instrument_requests_inprogress=True,
+    should_group_status_codes=False,
+    should_group_untemplated=True
+)
+
+# Attach instrumentator and expose metrics at /metrics
+instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+# ---------------- Routes ----------------
 @app.get("/")
 def home():
     return {"message": "Welcome to Road Accident AI API"}
@@ -45,15 +60,11 @@ async def qa(report: str = File(...), question: str = File(...)):
 # ---------------- Speech Recognition Endpoint ----------------
 @app.post("/predict_severity_speech")
 async def predict_severity_from_speech(file: UploadFile = File(...)):
-    # dir = Path("D:\\Suraj\\MTECH Learning\\Semester 2\\API Driven\\Assignments\\Assignment2\\road-accident-ai-api")
     audio_path = f"temp_audio_{file.filename}"
     with open(audio_path, "wb") as f:
         f.write(await file.read())
     
-    # Convert speech to text
     text = speech_to_text(audio_path)
-    
-    # Run existing NLP prediction
     severity = predict_severity(text)
     
     os.remove(audio_path)

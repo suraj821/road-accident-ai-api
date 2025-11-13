@@ -1,25 +1,35 @@
 import torch
 from torchvision import models, transforms
+from torchvision.models import ResNet50_Weights
 from PIL import Image
 import whisper
 import os
 
-
-ffmpeg_path = "/usr/local/bin/ffmpeg"  
+# ----------------------------
+# FFmpeg path for Whisper (if needed)
+# ----------------------------
+ffmpeg_path = "/usr/local/bin/ffmpeg"
 os.environ['PATH'] += f':{os.path.dirname(ffmpeg_path)}'
 
-
 # ----------------------------
-# Computer Vision Model (unchanged)
+# Computer Vision Model
 # ----------------------------
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
+
 class_names = ['Accident', 'No_Accident']
-model = models.resnet50(pretrained=False)
+
+# Load ResNet50 without deprecated 'pretrained' argument
+weights = None  # or ResNet50_Weights.DEFAULT if you want pretrained weights
+model = models.resnet50(weights=weights)
+
+# Update the final layer for 2 classes
 num_ftrs = model.fc.in_features
 model.fc = torch.nn.Linear(num_ftrs, 2)
+
+# Load your trained model weights
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "models/resnet50_accident.pt")
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
 model.eval()
@@ -55,14 +65,10 @@ def answer_question(question: str, context: str) -> str:
     return "Answer not available."
 
 # ----------------------------
-# Speech Recognition
+# Speech Recognition with Whisper
 # ----------------------------
-# Load Whisper model once
-whisper_model = whisper.load_model("large")  # or "small", "medium", "large"
+whisper_model = whisper.load_model("large")  # choose "small", "medium", "large"
 
 def speech_to_text(audio_file_path: str) -> str:
-    """
-    Convert audio file (.wav, .mp3) to text using Whisper.
-    """
     result = whisper_model.transcribe(audio_file_path)
     return result['text']
